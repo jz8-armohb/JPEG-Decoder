@@ -101,25 +101,30 @@ static void write_tga(const char *filename, int output_format, int width, int he
 /**
  * Save a buffer in three files (.Y, .U, .V) useable by yuvsplittoppm
  */
-static void write_yuv(const char *filename, int width, int height, unsigned char **components)
-{
-  FILE *F;
-  char temp[1024];
+static void write_yuv(const char* filename, int width, int height, unsigned char** components) {
+    FILE* F;
+    char temp[1024];
 
-  snprintf(temp, 1024, "%s.Y", filename);
-  F = fopen(temp, "wb");
-  fwrite(components[0], width, height, F);
-  fclose(F);
-  snprintf(temp, 1024, "%s.U", filename);
-  F = fopen(temp, "wb");
-  fwrite(components[1], width*height/4, 1, F);
-  fclose(F);
-  snprintf(temp, 1024, "%s.V", filename);
-  F = fopen(temp, "wb");
-  fwrite(components[2], width*height/4, 1, F);
-  fclose(F);
+    snprintf(temp, 1024, "%s.Y", filename);
+    F = fopen(temp, "wb");
+    fwrite(components[0], width, height, F);
+    fclose(F);
+    snprintf(temp, 1024, "%s.U", filename);
+    F = fopen(temp, "wb");
+    fwrite(components[1], width * height / 4, 1, F);
+    fclose(F);
+    snprintf(temp, 1024, "%s.V", filename);
+    F = fopen(temp, "wb");
+    fwrite(components[2], width * height / 4, 1, F);
+    fclose(F);
+
+    snprintf(temp, 1024, "%s.YUV", filename);
+    F = fopen(temp, "wb");
+    fwrite(components[0], width, height, F);
+    fwrite(components[1], width * height / 4, 1, F);
+    fwrite(components[2], width * height / 4, 1, F);
+    fclose(F);
 }
-
 /**
  * Save a buffer in grey image (pgm format)
  */
