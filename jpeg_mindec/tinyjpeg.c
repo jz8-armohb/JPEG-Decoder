@@ -1570,14 +1570,17 @@ static void build_quantization_table(float *qtable, const unsigned char *ref_tab
 
   for (i=0; i<8; i++) {
       for (j=0; j<8; j++) {
+          /* Added by S.Z.Zheng */
           fprintf(qtabFilePtr, "%-6d", ref_table[*zz]);
           if (j == 7) {
               fprintf(qtabFilePtr, "\n");
           }
+          /* Addition ended */
 
           *qtable++ = ref_table[*zz++] * aanscalefactor[i] * aanscalefactor[j];
       }
   }
+  fprintf(qtabFilePtr, "\n\n"); // Added by S.Z.Zheng
 }
 
 static int parse_DQT(struct jdec_private *priv, const unsigned char *stream)
@@ -1602,10 +1605,10 @@ static int parse_DQT(struct jdec_private *priv, const unsigned char *stream)
             snprintf(error_string, sizeof(error_string), "No more 4 quantization table is supported (got %d)\n", qi);
 #endif
         table = priv->Q_tables[qi];
-        build_quantization_table(table, stream);
-        stream += 64;
 
         fprintf(qtabFilePtr, "Quantisation table [%d]:\n", qi);   // ¡øªØ±ÌID£®added by S.Z.Zheng£©
+        build_quantization_table(table, stream);
+        stream += 64;
     }
 #if TRACE
     fprintf(p_trace, "< DQT marker\n");
