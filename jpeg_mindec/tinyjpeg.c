@@ -62,14 +62,6 @@ enum std_markers {
 #define BLACK_U 127
 #define BLACK_V 127
 
-/* 定义全局变量 by S.Z.Zheng */
-FILE* qtabFilePtr = NULL;
-FILE* dcTabFilePtr = NULL;
-FILE* acTabFilePtr = NULL;
-double* dcImgBuff_double = NULL;
-unsigned char* dcImgBuff = NULL;
-unsigned char* acImgBuff = NULL;
-/* 定义结束 */
 
 // #if DEBUG
 // #define trace(fmt, args...) do { \
@@ -1578,49 +1570,50 @@ static void build_quantization_table(float *qtable, const unsigned char *ref_tab
 
   for (i=0; i<8; i++) {
       for (j=0; j<8; j++) {
-          fprintf(qtabFilePtr, "%d", ref_table[zigzag[i * 8 + j]]);
-          fprintf(qtabFilePtr, "\t\n");
+          fprintf(qtabFilePtr, "%-6d", ref_table[*zz]);
           if (j == 7) {
-              fprintf(qtabFilePtr, "\r\n");
+              fprintf(qtabFilePtr, "\n");
           }
+
           *qtable++ = ref_table[*zz++] * aanscalefactor[i] * aanscalefactor[j];
       }
   }
-  fprintf(qtabFilePtr, "\r\n");
-  fprintf(qtabFilePtr, "\r\n");
-  fprintf(qtabFilePtr, "\r\n");
 }
 
 static int parse_DQT(struct jdec_private *priv, const unsigned char *stream)
 {
-  int qi;
-  float *table;
-  const unsigned char *dqt_block_end;
+    int qi;   // 量化表系数
+    float* table; // 指向量化表
+    const unsigned char* dqt_block_end;   // 指向量化表结束位置
 #if TRACE
-  fprintf(p_trace,"> DQT marker\n");
-  fflush(p_trace);
+    fprintf(p_trace, "> DQT marker\n");
+    fflush(p_trace);
 #endif
-  dqt_block_end = stream + be16_to_cpu(stream);
-  stream += 2;	/* Skip length */
+    dqt_block_end = stream + be16_to_cpu(stream);
+    stream += 2;	// 跳过长度字段
 
-  while (stream < dqt_block_end)
-   {
-     qi = *stream++;
+    while (stream < dqt_block_end)    // 检查是否还有量化表
+    {
+        qi = *stream++;    // 将量化表中系数逐个赋给qi
 #if SANITY_CHECK
-     if (qi>>4)
-       snprintf(error_string, sizeof(error_string),"16 bits quantization table is not supported\n");
-     if (qi>4)
-       snprintf(error_string, sizeof(error_string),"No more 4 quantization table is supported (got %d)\n", qi);
+        if (qi >> 4)
+            snprintf(error_string, sizeof(error_string), "16 bits quantization table is not supported\n");
+        if (qi > 4)
+            snprintf(error_string, sizeof(error_string), "No more 4 quantization table is supported (got %d)\n", qi);
 #endif
-     table = priv->Q_tables[qi];
-     build_quantization_table(table, stream);
-     stream += 64;
-   }
+        table = priv->Q_tables[qi];
+        build_quantization_table(table, stream);
+        stream += 64;
+
+        fprintf(qtabFilePtr, "Quantisation table [%d]:\n", qi);   // 量化表ID（added by S.Z.Zheng）
+    }
 #if TRACE
-  fprintf(p_trace,"< DQT marker\n");
-  fflush(p_trace);
+    fprintf(p_trace, "< DQT marker\n");
+    fflush(p_trace);
 #endif
-  return 0;
+
+
+    return 0;
 }
 
 static int parse_SOF(struct jdec_private *priv, const unsigned char *stream)
@@ -2195,11 +2188,11 @@ int tinyjpeg_decode(struct jdec_private* priv, int pixfmt)  // pixfmt为输出格式
                 }
             }
 
-            dcImgBuff_double[0] = (priv->component_infos->DCT[0] + 512.0) / 4;    // 直流系数在-512~512之间，先+512再除以4，变换到0~255的范围
-            dcImgBuff[0] = (unsigned char)(dcImgBuff_double[0] + 0.5);    // 四舍五入取整
-            fwrite(dcImgBuff, 1, 1, dcTabFilePtr);
-            acImgBuff[0] = (unsigned char)(priv->component_infos->DCT[3] + 128);
-            fwrite(acImgBuff, 1, 1, acTabFilePtr);
+            //dcImgBuff_double[0] = (priv->component_infos->DCT[0] + 512.0) / 4;    // 直流系数在-512~512之间，先+512再除以4，变换到0~255的范围
+            //dcImgBuff[0] = (unsigned char)(dcImgBuff_double[0] + 0.5);    // 四舍五入取整
+            //fwrite(dcImgBuff, 1, 1, dcImgFilePtr);
+            //acImgBuff[0] = (unsigned char)(priv->component_infos->DCT[3] + 128);
+            //fwrite(acImgBuff, 1, 1, acImgFilePtr);
         }
     }
 #if TRACE

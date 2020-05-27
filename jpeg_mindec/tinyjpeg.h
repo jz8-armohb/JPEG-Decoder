@@ -40,12 +40,7 @@ extern "C" {
 #endif
 
 /* 声明全局变量 by S.Z.Zheng */
-    extern FILE* qtabFilePtr;   // 量化表文件指针
-    extern FILE* dcTabFilePtr;
-    extern FILE* acTabFilePtr;
-    extern double* dcImgBuff_double;
-    extern unsigned char* dcImgBuff;
-    extern unsigned char* acImgBuff;
+    FILE* qtabFilePtr;    // 量化表文件指针
 /* 声明结束 */
 
 struct jdec_private;
