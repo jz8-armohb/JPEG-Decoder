@@ -40,7 +40,9 @@ extern "C" {
 #endif
 
 /* 声明全局变量 by S.Z.Zheng */
-    FILE* qtabFilePtr;    // 量化表文件指针
+    FILE* qtabFilePtr;  // 量化表文件指针
+    FILE* dcImgFilePtr; // DC图像文件指针
+    FILE* acImgFilePtr; // AC图像文件指针
 /* 声明结束 */
 
 struct jdec_private;

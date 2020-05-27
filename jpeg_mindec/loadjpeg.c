@@ -298,10 +298,14 @@ int main(int argc, char *argv[])
   int current_argument;
   int benchmark_mode = 0;
 
-
+  /* Added by S.Z.Zheng */
   const char* qtabFileName = "q_table.txt"; // 量化表文件名
-  fopen_s(&qtabFilePtr, qtabFileName, "wb");    // 打开文件
-
+  const char* dcImgFileName = "test_decoded_dc.yuv";    // DC图像文件名
+  const char* acImgFileName = "test_decoded_ac.yuv";    // AC图像文件名
+  fopen_s(&qtabFilePtr, qtabFileName, "wb");    // 打开量化表文件
+  fopen_s(&dcImgFilePtr, dcImgFileName, "wb");    // 打开DC图像文件
+  fopen_s(&acImgFilePtr, acImgFileName, "wb");    // 打开AC图像文件
+  /* Addition ended */
 
 
 #if TRACE
@@ -354,31 +358,11 @@ int main(int argc, char *argv[])
   fclose(p_trace);
 #endif
 
-
-  //const char* qtabFileName = "q_table.txt";
-  //const char* dcFileName = "decoded_dc.yuv";
-  //const char* acFileName = "decoded_ac.yuv";
-  //qtabFilePtr = fopen(qtabFileName, "wb");
-  //dcImgFilePtr = fopen(dcFileName, "wb");
-  //acImgFilePtr = fopen(acFileName, "wb");
-
-  //dcImgBuff_double = (double*)malloc(1024 * 1024);
-  //dcImgBuff = (unsigned char*)malloc(1024 * 1024);
-  //acImgBuff = (unsigned char*)malloc(1024 * 1024);
-
-
-  //fclose(qtabFilePtr);
-  //fclose(dcImgFilePtr);
-  //fclose(acImgFilePtr);
-  //free(dcImgBuff);
-  //free(acImgBuff);
-
-
-
-
-
-
+  /* Added by S.Z.Zheng */
   fclose(qtabFilePtr);
+  fclose(dcImgFilePtr);
+  fclose(acImgFilePtr);
+  /* Addition Ended */
 
   return 0;
 }

@@ -1585,7 +1585,7 @@ static void build_quantization_table(float *qtable, const unsigned char *ref_tab
 
 static int parse_DQT(struct jdec_private *priv, const unsigned char *stream)
 {
-    int qi;   // 量化表系数
+    int qi;   // 量化表ID
     float* table; // 指向量化表
     const unsigned char* dqt_block_end;   // 指向量化表结束位置
 #if TRACE
@@ -1606,7 +1606,7 @@ static int parse_DQT(struct jdec_private *priv, const unsigned char *stream)
 #endif
         table = priv->Q_tables[qi];
 
-        fprintf(qtabFilePtr, "Quantisation table [%d]:\n", qi);   // 量化表ID（added by S.Z.Zheng）
+        fprintf(qtabFilePtr, "Quantisation table %d:\n", qi);   // 量化表ID（added by S.Z.Zheng）
         build_quantization_table(table, stream);
         stream += 64;
     }
@@ -2058,6 +2058,13 @@ int tinyjpeg_decode(struct jdec_private* priv, int pixfmt)  // pixfmt为输出格式
     const convert_colorspace_fct* colorspace_array_conv;
     convert_colorspace_fct convert_to_pixfmt;
 
+    /* Added by S.Z.Zheng */
+    unsigned char* dcImgBuff;
+    unsigned char* acImgBuff;
+    unsigned char* uvBuff = { 128 };
+    int yCount = 0;
+    /* Addition ended*/
+
     if (setjmp(priv->jump_state))
         return -1;
 
@@ -2177,6 +2184,13 @@ int tinyjpeg_decode(struct jdec_private* priv, int pixfmt)  // pixfmt为输出格式
         priv->plane[2] = priv->components[2] + (y * bytes_per_blocklines[2]);
         for (x = 0; x < priv->width; x += xstride_by_mcu) {
             decode_MCU(priv);
+
+            dcImgBuff = (unsigned char)((priv->component_infos->DCT[0] + 512.0) / 4 + 0.5);  // DC系数范围-512~512；变换到0~255
+            acImgBuff = (unsigned char)(priv->component_infos->DCT[1] + 128);   // 选取DCT[1]作为AC的observation；+128便于观察
+            fwrite(&dcImgBuff, 1, 1, dcImgFilePtr);
+            fwrite(&acImgBuff, 1, 1, acImgFilePtr);
+            yCount++;
+
             convert_to_pixfmt(priv);
             priv->plane[0] += bytes_per_mcu[0];
             priv->plane[1] += bytes_per_mcu[1];
@@ -2190,12 +2204,6 @@ int tinyjpeg_decode(struct jdec_private* priv, int pixfmt)  // pixfmt为输出格式
                         return -1;
                 }
             }
-
-            //dcImgBuff_double[0] = (priv->component_infos->DCT[0] + 512.0) / 4;    // 直流系数在-512~512之间，先+512再除以4，变换到0~255的范围
-            //dcImgBuff[0] = (unsigned char)(dcImgBuff_double[0] + 0.5);    // 四舍五入取整
-            //fwrite(dcImgBuff, 1, 1, dcImgFilePtr);
-            //acImgBuff[0] = (unsigned char)(priv->component_infos->DCT[3] + 128);
-            //fwrite(acImgBuff, 1, 1, acImgFilePtr);
         }
     }
 #if TRACE
@@ -2203,6 +2211,11 @@ int tinyjpeg_decode(struct jdec_private* priv, int pixfmt)  // pixfmt为输出格式
     fprintf(p_trace, "Input bytes actually read: %d\n", priv->stream - priv->stream_begin + 2);
     fflush(p_trace);
 #endif
+
+    for (int i = 0; i < yCount / 4 * 2; i++) {
+        fwrite(&uvBuff, sizeof(unsigned char), 1, dcImgFilePtr);
+        fwrite(&uvBuff, sizeof(unsigned char), 1, acImgFilePtr);
+    }
 
     return 0;
 }
