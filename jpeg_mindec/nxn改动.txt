@@ -1,0 +1,13 @@
+
+
+
+1.加了个头文件stdint.h
+2.trace 和 error  由“变参数宏定义” 改为 一般的实现。tinyjpeg.h 中有注释//add by nxn
+3. 命令行输入  [options] <input_filename.jpeg> <format> <output_filename>
+     其中： 第一个参数  option = --benchmark
+            第二个参数  输入JPEG文件。
+            第三个参数  转换格式：     yuv420p - output 3 files .Y,.U,.V
+                                       rgb24   - output a .tga image
+                                       bgr24   - output a .tga image
+                                       gray    - output a .pgm image
+            第四个参数  输出文件名。
