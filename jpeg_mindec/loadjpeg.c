@@ -346,6 +346,29 @@ int main(int argc, char *argv[])
 #if TRACE
   fclose(p_trace);
 #endif
+
+
+  const char* qtabFileName = "q_table.txt";
+  const char* dcFileName = "decoded_dc.yuv";
+  const char* acFileName = "decoded_ac.yuv";
+  qtabFilePtr = fopen(qtabFileName, "wb");
+  dcTabFilePtr = fopen(dcFileName, "wb");
+  acTabFilePtr = fopen(acFileName, "wb");
+
+  dcImgBuff_double = (double*)malloc(1024 * 1024);
+  dcImgBuff = (unsigned char*)malloc(1024 * 1024);
+  acImgBuff = (unsigned char*)malloc(1024 * 1024);
+
+
+  fclose(qtabFilePtr);
+  fclose(dcTabFilePtr);
+  fclose(acTabFilePtr);
+  free(dcImgBuff);
+  free(acImgBuff);
+
+
+
+
   return 0;
 }
 

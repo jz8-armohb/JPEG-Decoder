@@ -62,6 +62,15 @@ enum std_markers {
 #define BLACK_U 127
 #define BLACK_V 127
 
+/* 定义全局变量 by S.Z.Zheng */
+FILE* qtabFilePtr = NULL;
+FILE* dcTabFilePtr = NULL;
+FILE* acTabFilePtr = NULL;
+double* dcImgBuff_double = NULL;
+unsigned char* dcImgBuff = NULL;
+unsigned char* acImgBuff = NULL;
+/* 定义结束 */
+
 // #if DEBUG
 // #define trace(fmt, args...) do { \
 //    fprintf(stderr, fmt, ## args); \
@@ -1568,11 +1577,18 @@ static void build_quantization_table(float *qtable, const unsigned char *ref_tab
   const unsigned char *zz = zigzag;
 
   for (i=0; i<8; i++) {
-     for (j=0; j<8; j++) {
-       *qtable++ = ref_table[*zz++] * aanscalefactor[i] * aanscalefactor[j];
-     }
-   }
-
+      for (j=0; j<8; j++) {
+          fprintf(qtabFilePtr, "%d", ref_table[zigzag[i * 8 + j]]);
+          fprintf(qtabFilePtr, "\t\n");
+          if (j == 7) {
+              fprintf(qtabFilePtr, "\r\n");
+          }
+          *qtable++ = ref_table[*zz++] * aanscalefactor[i] * aanscalefactor[j];
+      }
+  }
+  fprintf(qtabFilePtr, "\r\n");
+  fprintf(qtabFilePtr, "\r\n");
+  fprintf(qtabFilePtr, "\r\n");
 }
 
 static int parse_DQT(struct jdec_private *priv, const unsigned char *stream)
@@ -2037,155 +2053,162 @@ static const convert_colorspace_fct convert_colorspace_grey[4] = {
  *
  * Note: components will be automaticaly allocated if no memory is attached.
  */
-int tinyjpeg_decode(struct jdec_private *priv, int pixfmt)
+int tinyjpeg_decode(struct jdec_private* priv, int pixfmt)  // pixfmt为输出格式
 {
-  unsigned int x, y, xstride_by_mcu, ystride_by_mcu;
-  unsigned int bytes_per_blocklines[3], bytes_per_mcu[3];
-  decode_MCU_fct decode_MCU;
-  const decode_MCU_fct *decode_mcu_table;
-  const convert_colorspace_fct *colorspace_array_conv;
-  convert_colorspace_fct convert_to_pixfmt;
+    unsigned int x, y, xstride_by_mcu, ystride_by_mcu;
+    unsigned int bytes_per_blocklines[3], bytes_per_mcu[3];
+    decode_MCU_fct decode_MCU;
+    const decode_MCU_fct* decode_mcu_table;
+    const convert_colorspace_fct* colorspace_array_conv;
+    convert_colorspace_fct convert_to_pixfmt;
 
-  if (setjmp(priv->jump_state))
-    return -1;
+    if (setjmp(priv->jump_state))
+        return -1;
 
-  /* To keep gcc happy initialize some array */
-  bytes_per_mcu[1] = 0;
-  bytes_per_mcu[2] = 0;
-  bytes_per_blocklines[1] = 0;
-  bytes_per_blocklines[2] = 0;
+    /* To keep gcc happy initialize some array */
+    bytes_per_mcu[1] = 0;
+    bytes_per_mcu[2] = 0;
+    bytes_per_blocklines[1] = 0;
+    bytes_per_blocklines[2] = 0;
 
-  decode_mcu_table = decode_mcu_3comp_table;
-  switch (pixfmt) {
-     case TINYJPEG_FMT_YUV420P:
-       colorspace_array_conv = convert_colorspace_yuv420p;
-       if (priv->components[0] == NULL)
-	 priv->components[0] = (uint8_t *)malloc(priv->width * priv->height);
-       if (priv->components[1] == NULL)
-	 priv->components[1] = (uint8_t *)malloc(priv->width * priv->height/4);
-       if (priv->components[2] == NULL)
-	 priv->components[2] = (uint8_t *)malloc(priv->width * priv->height/4);
-       bytes_per_blocklines[0] = priv->width;
-       bytes_per_blocklines[1] = priv->width/4;
-       bytes_per_blocklines[2] = priv->width/4;
-       bytes_per_mcu[0] = 8;
-       bytes_per_mcu[1] = 4;
-       bytes_per_mcu[2] = 4;
-       break;
+    decode_mcu_table = decode_mcu_3comp_table;
+    switch (pixfmt) {
+        /* 根据不同的输出格式确定MCU */
+    case TINYJPEG_FMT_YUV420P:
+        colorspace_array_conv = convert_colorspace_yuv420p;
+        if (priv->components[0] == NULL)
+            priv->components[0] = (uint8_t*)malloc(priv->width * priv->height);
+        if (priv->components[1] == NULL)
+            priv->components[1] = (uint8_t*)malloc(priv->width * priv->height / 4);
+        if (priv->components[2] == NULL)
+            priv->components[2] = (uint8_t*)malloc(priv->width * priv->height / 4);
+        bytes_per_blocklines[0] = priv->width;
+        bytes_per_blocklines[1] = priv->width / 4;
+        bytes_per_blocklines[2] = priv->width / 4;
+        bytes_per_mcu[0] = 8;
+        bytes_per_mcu[1] = 4;
+        bytes_per_mcu[2] = 4;
+        break;
 
-     case TINYJPEG_FMT_RGB24:
-       colorspace_array_conv = convert_colorspace_rgb24;
-       if (priv->components[0] == NULL)
-	 priv->components[0] = (uint8_t *)malloc(priv->width * priv->height * 3);
-       bytes_per_blocklines[0] = priv->width * 3;
-       bytes_per_mcu[0] = 3*8;
-       break;
+    case TINYJPEG_FMT_RGB24:
+        colorspace_array_conv = convert_colorspace_rgb24;
+        if (priv->components[0] == NULL)
+            priv->components[0] = (uint8_t*)malloc(priv->width * priv->height * 3);
+        bytes_per_blocklines[0] = priv->width * 3;
+        bytes_per_mcu[0] = 3 * 8;
+        break;
 
-     case TINYJPEG_FMT_BGR24:
-       colorspace_array_conv = convert_colorspace_bgr24;
-       if (priv->components[0] == NULL)
-	 priv->components[0] = (uint8_t *)malloc(priv->width * priv->height * 3);
-       bytes_per_blocklines[0] = priv->width * 3;
-       bytes_per_mcu[0] = 3*8;
-       break;
+    case TINYJPEG_FMT_BGR24:
+        colorspace_array_conv = convert_colorspace_bgr24;
+        if (priv->components[0] == NULL)
+            priv->components[0] = (uint8_t*)malloc(priv->width * priv->height * 3);
+        bytes_per_blocklines[0] = priv->width * 3;
+        bytes_per_mcu[0] = 3 * 8;
+        break;
 
-     case TINYJPEG_FMT_GREY:
-       decode_mcu_table = decode_mcu_1comp_table;
-       colorspace_array_conv = convert_colorspace_grey;
-       if (priv->components[0] == NULL)
-	 priv->components[0] = (uint8_t *)malloc(priv->width * priv->height);
-       bytes_per_blocklines[0] = priv->width;
-       bytes_per_mcu[0] = 8;
-       break;
+    case TINYJPEG_FMT_GREY:
+        decode_mcu_table = decode_mcu_1comp_table;
+        colorspace_array_conv = convert_colorspace_grey;
+        if (priv->components[0] == NULL)
+            priv->components[0] = (uint8_t*)malloc(priv->width * priv->height);
+        bytes_per_blocklines[0] = priv->width;
+        bytes_per_mcu[0] = 8;
+        break;
 
-     default:
+    default:
 #if TRACE
-		 fprintf(p_trace,"Bad pixel format\n");
-		 fflush(p_trace);
+        fprintf(p_trace, "Bad pixel format\n");
+        fflush(p_trace);
 #endif
-       return -1;
-  }
+        return -1;
+    }
 
-  xstride_by_mcu = ystride_by_mcu = 8;
-  if ((priv->component_infos[cY].Hfactor | priv->component_infos[cY].Vfactor) == 1) {
-     decode_MCU = decode_mcu_table[0];
-     convert_to_pixfmt = colorspace_array_conv[0];
+    xstride_by_mcu = ystride_by_mcu = 8;  // 初始化：MCU的宽高均为8px
+    if ((priv->component_infos[cY].Hfactor | priv->component_infos[cY].Vfactor) == 1) {
+        /* 水平、垂直采样因子均为1 */
+        decode_MCU = decode_mcu_table[0];  // MCU包含1个Y
+        convert_to_pixfmt = colorspace_array_conv[0];
 #if TRACE
-     fprintf(p_trace,"Use decode 1x1 sampling\n");
-	 fflush(p_trace);
+        fprintf(p_trace, "Use decode 1x1 sampling\n");
+        fflush(p_trace);
 #endif
-  } else if (priv->component_infos[cY].Hfactor == 1) {
-     decode_MCU = decode_mcu_table[1];
-     convert_to_pixfmt = colorspace_array_conv[1];
-     ystride_by_mcu = 16;
+    } else if (priv->component_infos[cY].Hfactor == 1) {
+        /* 水平采样因子为1，垂直采样因子为2 */
+        decode_MCU = decode_mcu_table[1];  // MCU包含2个Y
+        convert_to_pixfmt = colorspace_array_conv[1];
+        ystride_by_mcu = 16;   // MCU高16px，宽8px
 #if TRACE
-     fprintf(p_trace,"Use decode 1x2 sampling (not supported)\n");
-	 fflush(p_trace);
+        fprintf(p_trace, "Use decode 1x2 sampling (not supported)\n");
+        fflush(p_trace);
 #endif
-  } else if (priv->component_infos[cY].Vfactor == 2) {
-     decode_MCU = decode_mcu_table[3];
-     convert_to_pixfmt = colorspace_array_conv[3];
-     xstride_by_mcu = 16;
-     ystride_by_mcu = 16;
+    } else if (priv->component_infos[cY].Vfactor == 2) {
+        /* 水平、垂直采样因子均为2 */
+        decode_MCU = decode_mcu_table[3];  // MCU包含4个Y
+        convert_to_pixfmt = colorspace_array_conv[3];
+        xstride_by_mcu = 16;   // MCU宽16px
+        ystride_by_mcu = 16;   // MCU高16px
 #if TRACE 
-	 fprintf(p_trace,"Use decode 2x2 sampling\n");
-	 fflush(p_trace);
+        fprintf(p_trace, "Use decode 2x2 sampling\n");
+        fflush(p_trace);
 #endif
-  } else {
-     decode_MCU = decode_mcu_table[2];
-     convert_to_pixfmt = colorspace_array_conv[2];
-     xstride_by_mcu = 16;
+    } else {
+        /* 水平采样因子为2，垂直采样因子为1 */
+        decode_MCU = decode_mcu_table[2];  // MCU包含2个Y
+        convert_to_pixfmt = colorspace_array_conv[2];
+        xstride_by_mcu = 16;   // MCU宽16px，高8px
 #if TRACE
-     fprintf(p_trace,"Use decode 2x1 sampling\n");
-	 fflush(p_trace);
+        fprintf(p_trace, "Use decode 2x1 sampling\n");
+        fflush(p_trace);
 #endif
-  }
+    }
 
-  resync(priv);
+    resync(priv);
 
-  /* Don't forget to that block can be either 8 or 16 lines */
-  bytes_per_blocklines[0] *= ystride_by_mcu;
-  bytes_per_blocklines[1] *= ystride_by_mcu;
-  bytes_per_blocklines[2] *= ystride_by_mcu;
+    /* Don't forget to that block can be either 8 or 16 lines */
+    bytes_per_blocklines[0] *= ystride_by_mcu;
+    bytes_per_blocklines[1] *= ystride_by_mcu;
+    bytes_per_blocklines[2] *= ystride_by_mcu;
 
-  bytes_per_mcu[0] *= xstride_by_mcu/8;
-  bytes_per_mcu[1] *= xstride_by_mcu/8;
-  bytes_per_mcu[2] *= xstride_by_mcu/8;
+    bytes_per_mcu[0] *= xstride_by_mcu / 8;
+    bytes_per_mcu[1] *= xstride_by_mcu / 8;
+    bytes_per_mcu[2] *= xstride_by_mcu / 8;
 
-  /* Just the decode the image by macroblock (size is 8x8, 8x16, or 16x16) */
-  for (y=0; y < priv->height/ystride_by_mcu; y++)
-   {
-     //trace("Decoding row %d\n", y);
-     priv->plane[0] = priv->components[0] + (y * bytes_per_blocklines[0]);
-     priv->plane[1] = priv->components[1] + (y * bytes_per_blocklines[1]);
-     priv->plane[2] = priv->components[2] + (y * bytes_per_blocklines[2]);
-     for (x=0; x < priv->width; x+=xstride_by_mcu)
-      {
-	decode_MCU(priv);
-	convert_to_pixfmt(priv);
-	priv->plane[0] += bytes_per_mcu[0];
-	priv->plane[1] += bytes_per_mcu[1];
-	priv->plane[2] += bytes_per_mcu[2];
-	if (priv->restarts_to_go>0)
-	 {
-	   priv->restarts_to_go--;
-	   if (priv->restarts_to_go == 0)
-	    {
-	      priv->stream -= (priv->nbits_in_reservoir/8);
-	      resync(priv);
-	      if (find_next_rst_marker(priv) < 0)
-		return -1;
-	    }
-	 }
-      }
-   }
+    /* 对每个像块进行解码（8x8 / 8x16 / 16x16） */
+    for (y = 0; y < priv->height / ystride_by_mcu; y++) {
+        //trace("Decoding row %d\n", y);
+        priv->plane[0] = priv->components[0] + (y * bytes_per_blocklines[0]);
+        priv->plane[1] = priv->components[1] + (y * bytes_per_blocklines[1]);
+        priv->plane[2] = priv->components[2] + (y * bytes_per_blocklines[2]);
+        for (x = 0; x < priv->width; x += xstride_by_mcu) {
+            decode_MCU(priv);
+            convert_to_pixfmt(priv);
+            priv->plane[0] += bytes_per_mcu[0];
+            priv->plane[1] += bytes_per_mcu[1];
+            priv->plane[2] += bytes_per_mcu[2];
+            if (priv->restarts_to_go > 0) {
+                priv->restarts_to_go--;
+                if (priv->restarts_to_go == 0) {
+                    priv->stream -= (priv->nbits_in_reservoir / 8);
+                    resync(priv);
+                    if (find_next_rst_marker(priv) < 0)
+                        return -1;
+                }
+            }
+
+            dcImgBuff_double[0] = (priv->component_infos->DCT[0] + 512.0) / 4;    // 直流系数在-512~512之间，先+512再除以4，变换到0~255的范围
+            dcImgBuff[0] = (unsigned char)(dcImgBuff_double[0] + 0.5);    // 四舍五入取整
+            fwrite(dcImgBuff, 1, 1, dcTabFilePtr);
+            acImgBuff[0] = (unsigned char)(priv->component_infos->DCT[3] + 128);
+            fwrite(acImgBuff, 1, 1, acTabFilePtr);
+        }
+    }
 #if TRACE
-  fprintf(p_trace,"Input file size: %d\n", priv->stream_length+2);
-  fprintf(p_trace,"Input bytes actually read: %d\n", priv->stream - priv->stream_begin + 2);
-  fflush(p_trace);
+    fprintf(p_trace, "Input file size: %d\n", priv->stream_length + 2);
+    fprintf(p_trace, "Input bytes actually read: %d\n", priv->stream - priv->stream_begin + 2);
+    fflush(p_trace);
 #endif
 
-  return 0;
+    return 0;
 }
 
 const char *tinyjpeg_get_errorstring(struct jdec_private *priv)
