@@ -285,6 +285,51 @@ static void usage(void)
     exit(1);
 }
 
+
+void PrintPMF_Entropy(int w, int h, const char* imgFileName, const char* pmfFileName, const char* entrFileName) {
+    int count[256] = { 0 };	// Counter
+    double freq[256] = { 0 };	// Frequency
+    double entropy = 0;
+    FILE* imgFilePtr;
+    unsigned char* buffer = (unsigned char*)malloc(w * h);
+    fopen_s(&imgFilePtr, imgFileName, "rb+");
+    fread(buffer, sizeof(unsigned char), w * h, imgFilePtr);
+
+    /* Compute the frequency of each greyscale */
+    for (int i = 0; i < w * h; i++) {
+        int index = (int)buffer[i];
+        count[index]++;
+    }
+
+    /* Compute the PMF & entropy */
+    for (int i = 0; i < 256; i++) {
+        freq[i] = (double)count[i] / (w * h);
+        if (freq[i] != 0) {
+            entropy += (-freq[i]) * log(freq[i]) / log(2);
+        }
+    }
+
+    /* Output the stats into a csv file */
+    FILE* pmfFilePtr;
+    FILE* entrFilePtr;
+    fopen_s(&pmfFilePtr, pmfFileName, "wb");
+    fopen_s(&entrFilePtr, entrFileName, "ab");
+
+
+    fprintf(pmfFilePtr, "Symbol,Frequency\n");
+    for (int i = 0; i < 256; i++) {
+        fprintf(pmfFilePtr, "%-3d,%-8.2e\n", i, freq[i]);	// 将数据输出到文件中（csv文件以“,”作为分隔符）
+    }
+    fprintf(entrFilePtr, "%.4lf\n", entropy);
+
+    free(buffer);
+    fclose(imgFilePtr);
+    fclose(pmfFilePtr);
+    fclose(entrFilePtr);
+}
+
+
+
 /**
  * main
  *
@@ -357,6 +402,8 @@ int main(int argc, char *argv[])
 #if TRACE
   fclose(p_trace);
 #endif
+
+  PrintPMF_Entropy(128, 128, "test_decoded_dc.yuv", "pmf_dc.txt", "entropy_dc.txt");   // Added by S.Z.Zheng
 
   /* Added by S.Z.Zheng */
   fclose(qtabFilePtr);

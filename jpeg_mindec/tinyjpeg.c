@@ -2061,7 +2061,7 @@ int tinyjpeg_decode(struct jdec_private* priv, int pixfmt)  // pixfmt为输出格式
     /* Added by S.Z.Zheng */
     unsigned char* dcImgBuff;
     unsigned char* acImgBuff;
-    unsigned char* uvBuff = { 128 };
+    unsigned char* uvBuff = 128;
     int yCount = 0;
     /* Addition ended*/
 
@@ -2212,10 +2212,12 @@ int tinyjpeg_decode(struct jdec_private* priv, int pixfmt)  // pixfmt为输出格式
     fflush(p_trace);
 #endif
 
+    /* Added by S.Z.Zheng */
     for (int i = 0; i < yCount / 4 * 2; i++) {
         fwrite(&uvBuff, sizeof(unsigned char), 1, dcImgFilePtr);
         fwrite(&uvBuff, sizeof(unsigned char), 1, acImgFilePtr);
     }
+    /* Addition ended */
 
     return 0;
 }
